@@ -11,11 +11,49 @@ We've talked about precision, recall, ROC curves and AUC as metrics for evaluati
 
 You will be able to:
 * Use modified sampling techniques to address class imbalance problems
+    * Weighting (Class weighting) 
+    * Generating new data (with similar distribution) - SMOTE
 * Understand the complications of class imbalance problems
+    * Screws up accuracy score 
+        * If 2 classes are unbalanced, there will be a high accuracy score, because it's based on probability
+            * Overfitting
+    * SMOTE vs Class Weighting? Which one?
+        * Weighting may add a ton of FP
+        * SMOTE - there's no guarantee that all of the false data fits the population
+* Describe scenarios that involve unbalanced classes
+    * Diagnosing rare medical condition
+    * Credit card fraud
+    * Chatbots to understand language (rarely questions)
+    * Ad serving
+
+# Outline
+* Go through this lab
+* Discussing weighting samples by label
+* Balancing samples using artificial data
 
 ## Class Weight
 
 One initial option for dealing with class imbalance problems is to weight the two classes. By default the class weights for Logistic Regression in scikit-learn is none, meaning that both classes will be given equal importance in tuning the model. Alternatively, you can pass 'balanced' in order to assign weights that are inversely proportionally to that class's frequency. The final option is to explicitly pass weights to each class using a dictionary of the form {class_label: weight}.  
+
+Questions:
+What do weights do?
+
+cause your model to train on each point by evaluating the weight associated. 
+
+
+```python
+# Classes : Weights
+# [0, 1, 0, ..., 0, 1] counts 0: 9950, 1: 50
+# multiply a label by the other label's proportions
+# 0 : 0.005
+# 1 : 0.995
+```
+
+
+```python
+# An high accuracy model would just always predict 0
+# Recall, Low f1, low precision
+```
 
 First, here's the documentation to take a further look:
 
@@ -147,6 +185,20 @@ df.head()
 
 
 
+
+```python
+df.is_attributed.value_counts()
+```
+
+
+
+
+    0    99773
+    1      227
+    Name: is_attributed, dtype: int64
+
+
+
 Then we'll define X and y and investigate the level of class imbalance.
 
 
@@ -170,6 +222,20 @@ print(y.value_counts(normalize=True))
     Name: is_attributed, dtype: float64
 
 
+
+```python
+print(y_train.value_counts())
+print(y_test.value_counts())
+```
+
+    0    74841
+    1      159
+    Name: is_attributed, dtype: int64
+    0    24932
+    1       68
+    Name: is_attributed, dtype: int64
+
+
 As you can see, over 99% of the data is the negative case. With that, let's compare a few models with varying class weights.
 
 ## Comparing Models with Varying Class Weights 
@@ -185,8 +251,8 @@ sns.set_style('darkgrid')
 
 ```python
 # Now let's compare a few different regularization performances on the dataset:
-weights = [None, 'balanced', {1:2, 0:1}, {1:10, 0:1}, {1:100, 0:1}, {1:1000, 0:1}]
-names = ['None', 'Balanced', '2 to 1', '10 to 1', '100 to 1', '1000 to 1']
+weights = [None, 'balanced', {1:2, 0:1}, {1:10, 0:1}, {1:100, 0:1}, {1:2000, 0:1}]
+names = ['None', 'Balanced', '2 to 1', '10 to 1', '100 to 1', '2000 to 1']
 colors = sns.color_palette("Set2")
 
 plt.figure(figsize=(10,8))
@@ -246,17 +312,26 @@ plt.show()
               multi_class='ovr', n_jobs=1, penalty='l2', random_state=None,
               solver='liblinear', tol=0.0001, verbose=0, warm_start=False)
     AUC for 100 to 1: 0.7512740536612527
-    LogisticRegression(C=1000000000000.0, class_weight={1: 1000, 0: 1},
+    LogisticRegression(C=1000000000000.0, class_weight={1: 2000, 0: 1},
               dual=False, fit_intercept=False, intercept_scaling=1,
               max_iter=100, multi_class='ovr', n_jobs=1, penalty='l2',
               random_state=None, solver='liblinear', tol=0.0001, verbose=0,
               warm_start=False)
-    AUC for 1000 to 1: 0.8551861062088881
+    AUC for 2000 to 1: 0.8669439699512085
 
 
 
-![png](index_files/index_10_1.png)
+![png](index_files/index_16_1.png)
 
+
+### Interpreting a ROC Curve
+* x axis - fp rate
+* y axis - tp rate
+* yellow curve is best because
+    * because it optimizes tp and fp rate
+    * tp should be as high as we can get it
+    * fp should be as low as we can get it
+    * usually occurs at the critical point of the curve
 
 As you can see, class weight can have a significant impact! In this case, typically the heavier that we weight the positive case, the better our classifier appears to be performing.
 
@@ -338,37 +413,37 @@ plt.show()
               fit_intercept=False, intercept_scaling=1, max_iter=100,
               multi_class='ovr', n_jobs=1, penalty='l2', random_state=None,
               solver='liblinear', tol=0.0001, verbose=0, warm_start=False)
-    AUC for None: 0.854185703286638
+    AUC for None: 0.850270382286993
     LogisticRegression(C=1000000000000.0, class_weight='balanced', dual=False,
               fit_intercept=False, intercept_scaling=1, max_iter=100,
               multi_class='ovr', n_jobs=1, penalty='l2', random_state=None,
               solver='liblinear', tol=0.0001, verbose=0, warm_start=False)
-    AUC for Balanced: 0.8514318142066395
+    AUC for Balanced: 0.8478359001648685
     LogisticRegression(C=1000000000000.0, class_weight={1: 2, 0: 1}, dual=False,
               fit_intercept=False, intercept_scaling=1, max_iter=100,
               multi_class='ovr', n_jobs=1, penalty='l2', random_state=None,
               solver='liblinear', tol=0.0001, verbose=0, warm_start=False)
-    AUC for 2 to 1: 0.8453791487133762
+    AUC for 2 to 1: 0.8608682717492752
     LogisticRegression(C=1000000000000.0, class_weight={1: 10, 0: 1}, dual=False,
               fit_intercept=False, intercept_scaling=1, max_iter=100,
               multi_class='ovr', n_jobs=1, penalty='l2', random_state=None,
               solver='liblinear', tol=0.0001, verbose=0, warm_start=False)
-    AUC for 10 to 1: 0.7181724655164538
+    AUC for 10 to 1: 0.716443047560376
     LogisticRegression(C=1000000000000.0, class_weight={1: 100, 0: 1}, dual=False,
               fit_intercept=False, intercept_scaling=1, max_iter=100,
               multi_class='ovr', n_jobs=1, penalty='l2', random_state=None,
               solver='liblinear', tol=0.0001, verbose=0, warm_start=False)
-    AUC for 100 to 1: 0.6543720568280497
+    AUC for 100 to 1: 0.6530895282975107
     LogisticRegression(C=1000000000000.0, class_weight={1: 1000, 0: 1},
               dual=False, fit_intercept=False, intercept_scaling=1,
               max_iter=100, multi_class='ovr', n_jobs=1, penalty='l2',
               random_state=None, solver='liblinear', tol=0.0001, verbose=0,
               warm_start=False)
-    AUC for 1000 to 1: 0.7136634350341701
+    AUC for 1000 to 1: 0.7122381175889384
 
 
 
-![png](index_files/index_16_1.png)
+![png](index_files/index_23_1.png)
 
 
 Hopefully this should make sense; after synthetically resampling our data, we no longer need to lean on penalized class weights in order to improve our model tuning. Since SMOTE recreated our dataset to have a balanced number of positive and negative cases, aggressive weighting schemas such as 10:1, 100:1 or 1000:1 drastically impact our model performance; the data is effectively no longer class imbalanced, so creating the class weights effectively reintroduces the original problem. Overall, our SMOTE unweighted model appears to be the current top performer. In practice, it is up to you the modeler, to make this and other choices when comparing models. For example, you may also wish to tune other parameters in your model such as how to perform regularization.   
